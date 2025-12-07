@@ -8,11 +8,16 @@ class Chip:
 
     def __eq__(self, other) -> bool:
         if isinstance(other, Chip):
-            return self.value == other.value
+            return self.color == other.color and self.value == other.value
         return False
 
     def __hash__(self) -> int:
         return hash(self.value)
+
+    def __add__(self, other):
+        if isinstance(other, Chip):
+            return Chip(self.color, self.value + other.value)
+        return NotImplemented
 
 
 class ChipCollection:

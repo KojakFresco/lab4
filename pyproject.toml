@@ -7,3 +7,22 @@ dependencies = [
     "pytest>=8.4.2",
     "typer>=0.20.0",
 ]
+
+[tool.pytest.ini_options]
+addopts = [
+    "--cov=src",
+    "--cov-branch",
+    "--cov-report=term-missing",
+    "-q",
+]
+testpaths = ["tests"]
+pythonpath = ["src"]
+[tool.coverage.run]
+source = ["src"]
+branch = true
+parallel = true
+omit = ["*/__init__.py", "*/main.py", "*/config.py"]
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 80

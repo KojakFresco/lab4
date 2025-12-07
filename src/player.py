@@ -7,7 +7,17 @@ class Player:
         return f"Player(name={self.name}, balance={self.balance})"
 
     def update_balance(self, amount: float) -> None:
+        """
+        Обновляет баланс игрока на указанную сумму.
+
+        :param amount: Сумма, на которую изменяется баланс.
+        """
         self.balance += amount
+
+    def __eq__(self, other):
+        if isinstance(other, Player):
+            return self.name == other.name and self.balance == other.balance
+        return False
 
 
 class PlayerCollection:
@@ -28,10 +38,19 @@ class PlayerCollection:
     def __len__(self):
         return len(self._players)
 
+    def __repr__(self):
+        return f"PlayerCollection({self._players})"
+
     def append(self, player: Player) -> None:
         self._players.append(player)
 
     def get_player_by_name(self, name: str) -> Player | None:
+        """
+        Возвращает игрока по имени, если он существует в коллекции.
+
+        :param name: Имя игрока для поиска.
+        :return: Объект Player или None, если игрок не найден.
+        """
         for player in self._players:
             if player.name == name:
                 return player
