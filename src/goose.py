@@ -1,5 +1,8 @@
 import logging
 import random
+from colorama import init, Fore
+
+init(autoreset=True)
 
 
 class Goose:
@@ -10,6 +13,7 @@ class Goose:
     def __repr__(self):
         return f"Goose(name={self.name}, honk_volume={self.honk_volume})"
 
+
 class RichGoose(Goose):
     def spend(self):
         """
@@ -19,15 +23,14 @@ class RichGoose(Goose):
         """
         return random.randint(1, 100)
 
+
 class HonkGoose(Goose):
     def __call__(self):
         """
         Вызывает гуся, который издаёт звук "Га!" с громкостью, равной его параметру honk_volume.
-
-        :return: Громкость крика гуся.
         """
-        logging.getLogger(__name__).info("Га! " * int(self.honk_volume))
-        return self.honk_volume
+        logging.getLogger(__name__).info(Fore.LIGHTYELLOW_EX + "Га! " * int(self.honk_volume))
+
 
 class GooseCollection:
     def __init__(self):

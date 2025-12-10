@@ -86,14 +86,14 @@ def test_casino_goose_action_honk(casino):
 
 
 def test_casino_add_random_entity_player(casino):
-    with patch('casino.random.random', return_value=0.1), patch('casino.random.choice', return_value="NewName"), patch('casino.random.randint', return_value=100):
+    with patch('casino.random.random', return_value=0.1), patch('casino.random.choice', return_value="Алекс"), patch('casino.random.randint', return_value=100):
         initial_players = len(casino.players)
         casino.add_random_entity()
         assert len(casino.players) == initial_players + 1
 
 
 def test_casino_add_random_entity_goose(casino):
-    with patch('casino.random.random', return_value=0.9), patch('casino.random.choice', return_value="NewGooseName"), patch('casino.random.randint', return_value=5):
+    with patch('casino.random.random', return_value=0.9), patch('casino.random.choice', return_value="Гусь-Сигма"), patch('casino.random.randint', return_value=5):
         initial_geese = len(casino.geese)
         casino.add_random_entity()
         assert len(casino.geese) == initial_geese + 1

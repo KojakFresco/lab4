@@ -1,12 +1,12 @@
 class Player:
-    def __init__(self, name: str, balance: float):
+    def __init__(self, name: str, balance: int):
         self.name = name
         self.balance = balance
 
     def __repr__(self):
         return f"Player(name={self.name}, balance={self.balance})"
 
-    def update_balance(self, amount: float) -> None:
+    def update_balance(self, amount: int) -> None:
         """
         Обновляет баланс игрока на указанную сумму.
 

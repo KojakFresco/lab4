@@ -2,10 +2,13 @@ import logging
 import random
 import time
 from collections import UserDict
+from colorama import init, Fore
 
 from player import PlayerCollection, Player
 from goose import GooseCollection, Goose, HonkGoose, RichGoose
 from chip import ChipCollection
+
+init(autoreset=True)
 
 logger = logging.getLogger()
 
@@ -18,7 +21,7 @@ class Casino:
         self.chips = chips
 
         self.player_names = ["Алекс", "Борис", "Виктор", "Григорий", "Дмитрий"]
-        self.goose_names = ["Гусь-Сигма", "Гусь-Свэг", "Гусь-Проказник", "Гусь-Воришка", "Гусь-Шутник"]
+        self.goose_names = ["Сигма", "Крутой", "Проказник", "Воришка", "Шутник"]
 
         self.events = {
             "player_bet": self.make_random_bet,
@@ -76,7 +79,7 @@ class Casino:
         weights = [self.event_weights[k] for k in self.events.keys()]
         event = random.choices(list(self.events.keys()), weights=weights)[0]
         self.events[event]()
-        time.sleep(1.5)
+        time.sleep(2)
 
     def make_random_bet(self):
         """
@@ -86,14 +89,15 @@ class Casino:
         """
         available_players = [p for p in self.players if p.name not in self.bets]
         player = random.choice(available_players)
-        bet_type = random.choices(['красное', 'чёрное', 'зеро'], weights=[0.49, 0.48, 0.03])[0]
-        amount = random.randint(int(player.balance / 4), int(player.balance))
+        bet_type = random.choices(['красное', 'чёрное', 'зеро'], weights=[0.47, 0.48, 0.05])[0]
+        if player.balance < 1: amount = player.balance
+        else: amount = random.randint(player.balance // 4 + 1, player.balance)
 
         self.bets.place_bet(player.name, bet_type, amount)
         player.balance -= amount  # Снимаем ставку сразу
 
         logger.info(
-            "\033[94m🎰 Игрок %s сделал ставку: %d на %s. Баланс после ставки: %d\033[0m",
+            Fore.BLUE + "🎰 Игрок %s сделал ставку: %d на %s. Баланс после ставки: %d",
             player.name, amount, bet_type, player.balance
         )
 
@@ -104,7 +108,7 @@ class Casino:
         Определяет выигрышный цвет (красное, чёрное или зеро) и обновляет баланс игроков
         в зависимости от их ставок.
         """
-        logger.info("\033[93m🎡 Колёсико вращается...\033[0m")
+        logger.info(Fore.LIGHTYELLOW_EX + "🎡 Колёсико вращается...")
         time.sleep(1.0)
 
         number = random.randint(0, 36)
@@ -115,7 +119,7 @@ class Casino:
             winning_color = 'красное'
         else:
             winning_color = 'чёрное'
-        logger.info("\033[93m🎲 Выпало: %d (%s)\033[0m", number, winning_color)
+        logger.info(Fore.LIGHTYELLOW_EX + "🎲 Выпало: %d (%s)", number, winning_color)
 
         for player_name, bet_info in self.bets.items():
             bet_type = bet_info['type']
@@ -129,9 +133,9 @@ class Casino:
                 result = "ВЫИГРАЛ"
             else:
                 result = "ПРОИГРАЛ"
-            color = "\033[92m" if bet_type == winning_color else "\033[91m"
+            color = Fore.GREEN if bet_type == winning_color else Fore.RED
             logger.info(
-                f"{color}💰 Игрок %s поставил %d на %s и %s. Новый баланс: %d\033[0m",
+                color + "💰 Игрок %s поставил %d на %s и %s. Новый баланс: %d",
                 player.name, amount, bet_type, result, player.balance
             )
 
@@ -145,12 +149,13 @@ class Casino:
             return
 
         goose = random.choice(self.geese)
-        player = random.choice(self.players)
-        steal_amount = random.randint(1, player.balance // 2)
+        player = random.choice([p for p in self.players if p.balance > 0])
+        if player.balance // 2 > 1: steal_amount = random.randint(1, player.balance // 2)
+        else: steal_amount = 1
 
         player.balance -= steal_amount
         logger.info(
-            "\033[95m🦢 Гусь %s украл у игрока %s %d грязных бумажек! Новый баланс игрока: %d\033[0m",
+            Fore.MAGENTA + "🦢 Гусь %s украл у игрока %s %d грязных бумажек! Новый баланс игрока: %d",
             goose.name, player.name, steal_amount, player.balance
         )
 
@@ -163,13 +168,13 @@ class Casino:
         """
         goose = random.choice(self.geese)
         if isinstance(goose, HonkGoose):
-            logger.info("\033[95m🦢 Гусь %s жёстко орёт!\033[0m", goose.name)
+            logger.info(Fore.MAGENTA + "🦢 Гусь %s жёстко орёт!", goose.name)
             goose()
         if isinstance(goose, RichGoose):
             money = goose.spend()
             for player in self.players:
                 player.balance += money
-            logger.info("\033[95m🦢 Гусь %s раздаёт челяди деньги! Все игроки получают по %d\033[0m", goose.name, money)
+            logger.info(Fore.MAGENTA + "🦢 Гусь %s раздаёт челяди деньги! Все игроки получают по %d", goose.name, money)
 
     def add_random_entity(self):
         """
@@ -179,7 +184,7 @@ class Casino:
         Если добавляется гусь, его тип выбирается с учётом текущего баланса типов гусей.
         """
         prob_player = (len(self.geese) + 1) / (len(self.players) + len(self.geese) + 2)
-        if random.random() < prob_player:
+        if (random.random() < prob_player and len(self.player_names) > 0) or len(self.goose_names) == 0:
             balances = [50, 100, 150, 200, 300, 500]
             weights = [0.3, 0.25, 0.15, 0.15, 0.1, 0.05]
             balance = random.choices(balances, weights=weights)[0]
@@ -188,9 +193,9 @@ class Casino:
                 name=name,
                 balance=balance
             )
-            del name
+            self.player_names.remove(name)
             self.add_player(new_player)
-            logger.info("\033[96m➕  В казик пришёл новый игрок: %s с валютой в количестве %d\033[0m", new_player.name, new_player.balance)
+            logger.info(Fore.CYAN + "➕ В казик пришёл новый игрок: %s с валютой в количестве %d", new_player.name, new_player.balance)
         else:
             name = random.choice(self.goose_names)
             goose_classes = [HonkGoose, RichGoose]
@@ -199,14 +204,14 @@ class Casino:
             count_rich = sum(1 for g in self.geese if isinstance(g, RichGoose))
 
             weights = [1 / (count_honk + 1), 1 / (count_rich + 1)]
-            GooseClass = random.choices(goose_classes, weights=weights)[0]
-            new_goose = GooseClass(
+            goose_class = random.choices(goose_classes, weights=weights)[0]
+            new_goose = goose_class(
                 name=name,
                 honk_volume=random.randint(1, 10)
             )
-            del name
+            self.goose_names.remove(name)
             self.add_goose(new_goose)
-            logger.info("\033[96m➕  В казик залетел новый гусь по имени %s\033[0m", new_goose.name)
+            logger.info(Fore.CYAN + "➕ В казик залетел новый гусь по имени %s", new_goose.name)
 
     def set_events_weight(self, weights: dict[str, float]):
         """
