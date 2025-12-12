@@ -1,3 +1,7 @@
+import logging
+import random
+
+
 class Player:
     def __init__(self, name: str, balance: int):
         self.name = name
@@ -18,6 +22,24 @@ class Player:
         if isinstance(other, Player):
             return self.name == other.name and self.balance == other.balance
         return False
+
+
+class PsychoPlayer(Player):
+    def __init__(self, name: str, balance: int):
+        super().__init__(name, balance)
+        self.psycho = 0.0
+
+    def update_psycho(self, money: int) -> None:
+        """
+        Обновляет уровень психоза игрока на указанную величину.
+
+        :param money: Кол-во денег, влияющее на уровень.
+        """
+        if money > 0:
+            self.psycho = max(0.0, self.psycho - float(money) / (self.balance + money))
+        else:
+            self.psycho = min(1.0, (self.psycho + 0.02 * float(-money) / (self.balance - money)) ** 0.8)
+        # logging.getLogger().debug("New psycho level for %s: %.2f", self.name, self.psycho)
 
 
 class PlayerCollection:
@@ -43,6 +65,9 @@ class PlayerCollection:
 
     def append(self, player: Player) -> None:
         self._players.append(player)
+
+    def remove(self, player: Player) -> None:
+        self._players.remove(player)
 
     def get_player_by_name(self, name: str) -> Player | None:
         """

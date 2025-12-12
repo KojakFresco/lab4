@@ -4,9 +4,10 @@ import time
 from collections import UserDict
 from colorama import init, Fore
 
-from player import PlayerCollection, Player
+from player import PlayerCollection, Player, PsychoPlayer
 from goose import GooseCollection, Goose, HonkGoose, RichGoose
 from chip import ChipCollection
+from constants import ENTITIES_MAX_COUNT
 
 init(autoreset=True)
 
@@ -20,8 +21,8 @@ class Casino:
         self.bets = CasinoBets()
         self.chips = chips
 
-        self.player_names = ["Алекс", "Борис", "Виктор", "Григорий", "Дмитрий"]
-        self.goose_names = ["Сигма", "Крутой", "Проказник", "Воришка", "Шутник"]
+        self.player_names = ["Александр", "Дмитрий", "Иван", "Сергей", "Андрей", "Владимир", "Максим", "Артем", "Николай", "Павел", "Хуан", "Карлос", "Марко", "Джованни", "Джеймс", "Уильям", "Михаэль", "Томас", "Жан", "Пьер"]
+        self.goose_names = ["Сигма", "Крутой", "Проказник", "Воришка", "Шутник", "Гусь-Гусь", "Кряк", "Пух", "Дональд", "Гусьня", "Шалун", "Ворюга", "Крикун", "Богатый", "Орёл", "Злодей", "Милый", "Хитрый", "Голодный", "Счастливчик"]
 
         self.events = {
             "player_bet": self.make_random_bet,
@@ -40,7 +41,7 @@ class Casino:
         if seed is not None:
             random.seed(seed)
 
-    def add_player(self, player: Player):
+    def add_player(self, player: Player) -> None:
         """
         Добавляет нового игрока в казино.
 
@@ -48,13 +49,39 @@ class Casino:
         """
         self.players.append(player)
 
-    def add_goose(self, goose: Goose):
+    def remove_player(self, player: Player) -> None:
+        """
+        Удаляет игрока из казино.
+
+        :param player: Объект игрока, который будет удалён.
+        """
+        self.players.remove(player)
+        self.bets.remove_bet(player.name)
+
+    def add_goose(self, goose: Goose) -> None:
         """
         Добавляет нового гуся в казино.
 
         :param goose: Объект гуся, который будет добавлен.
         """
         self.geese.append(goose)
+
+    def evualuate_weights(self) -> None:
+        if len(self.players):
+            weight_bets = ((len(self.bets)) / len(self.players)) ** 0.5
+            self.set_events_weight({"player_bet": 1 - weight_bets,
+                                    "spin_wheel": weight_bets})
+        else:
+            self.set_events_weight({"player_bet": 0.0,
+                                    "spin_wheel": 0.0})
+
+        if len(self.geese) and len(self.players):
+            weight_goose = (sum(p.balance for p in self.players) / 300.0 / len(self.players)) ** 0.5
+            self.set_events_weight({"goose_steal": weight_goose,
+                                    "goose_action": weight_goose})
+
+        weight_entity = ((ENTITIES_MAX_COUNT - len(self.players) - len(self.geese)) / 10.0) ** 2 * 2
+        self.set_events_weight({"new_entity": weight_entity})
 
     def perform_step(self) -> None:
         """
@@ -63,25 +90,21 @@ class Casino:
         Событие может быть ставкой игрока, вращением колеса, кражей гуся, добавлением новой сущности
         или действием гуся. Вес событий корректируется динамически.
         """
-        if len(self.players):
-            weight_bets = ((len(self.bets)) / len(self.players)) ** 0.5
-            self.set_events_weight({"player_bet": 1 - weight_bets,
-                                    "spin_wheel": weight_bets})
+        psycho_chance = random.random()
+        #  logger.debug("Psycho chance: %.2f", psycho_chance)
+        for p in self.players:
+            if isinstance(p, PsychoPlayer):
+                if p.psycho > psycho_chance:
+                    self.kill_player(p)
+                    break
+        else:
+            self.evualuate_weights()
+            weights = [self.event_weights[k] for k in self.events.keys()]
+            event = random.choices(list(self.events.keys()), weights=weights)[0]
+            self.events[event]()
+        time.sleep(1.5)
 
-        if len(self.geese) and len(self.players):
-            weight_goose = (sum(p.balance for p in self.players) / 300.0 / len(self.players)) ** 0.5
-            self.set_events_weight({"goose_steal": weight_goose,
-                                    "goose_action": weight_goose})
-
-        weight_entity = ((10 - len(self.players) - len(self.geese)) / 10.0) ** 2 * 2
-        self.event_weights["new_entity"] = weight_entity
-
-        weights = [self.event_weights[k] for k in self.events.keys()]
-        event = random.choices(list(self.events.keys()), weights=weights)[0]
-        self.events[event]()
-        time.sleep(2)
-
-    def make_random_bet(self):
+    def make_random_bet(self) -> None:
         """
         Устанавливает случайную ставку для случайного игрока.
 
@@ -94,14 +117,14 @@ class Casino:
         else: amount = random.randint(player.balance // 4 + 1, player.balance)
 
         self.bets.place_bet(player.name, bet_type, amount)
-        player.balance -= amount  # Снимаем ставку сразу
+        player.balance -= amount
 
         logger.info(
             Fore.BLUE + "🎰 Игрок %s сделал ставку: %d на %s. Баланс после ставки: %d",
             player.name, amount, bet_type, player.balance
         )
 
-    def spin_wheel(self):
+    def spin_wheel(self) -> None:
         """
         Генерирует случайное значение от 0 до 36, имитируя вращение колеса казино.
 
@@ -130,8 +153,12 @@ class Casino:
 
             if bet_type == winning_color:
                 player.balance += amount * 2
+                if isinstance(player, PsychoPlayer):
+                    player.update_psycho(amount)
                 result = "ВЫИГРАЛ"
             else:
+                if isinstance(player, PsychoPlayer):
+                    player.update_psycho(-amount)
                 result = "ПРОИГРАЛ"
             color = Fore.GREEN if bet_type == winning_color else Fore.RED
             logger.info(
@@ -141,7 +168,7 @@ class Casino:
 
         self.bets.clear_bets()
 
-    def goose_steal(self):
+    def goose_steal(self) -> None:
         """
         Случайный гусь крадёт деньги у случайного игрока.
         """
@@ -154,12 +181,14 @@ class Casino:
         else: steal_amount = 1
 
         player.balance -= steal_amount
+        if isinstance(player, PsychoPlayer):
+            player.update_psycho(-steal_amount)
         logger.info(
             Fore.MAGENTA + "🦢 Гусь %s украл у игрока %s %d грязных бумажек! Новый баланс игрока: %d",
             goose.name, player.name, steal_amount, player.balance
         )
 
-    def goose_action(self):
+    def goose_action(self) -> None:
         """
         Случайный гусь выполняет своё действие.
 
@@ -168,15 +197,24 @@ class Casino:
         """
         goose = random.choice(self.geese)
         if isinstance(goose, HonkGoose):
-            logger.info(Fore.MAGENTA + "🦢 Гусь %s жёстко орёт!", goose.name)
-            goose()
+            volume = goose()
+            for player in self.players:
+                if player.balance > volume * 2:
+                    player.balance -= volume * 2
+                    if isinstance(player, PsychoPlayer):
+                        player.update_psycho(-volume * 2)
+
+            logger.info(Fore.MAGENTA + "🦢 Крик гуся напугал игроков! Все потеряли по %s денег.",
+                        volume * 2)
         if isinstance(goose, RichGoose):
             money = goose.spend()
             for player in self.players:
                 player.balance += money
+                if isinstance(player, PsychoPlayer):
+                    player.update_psycho(money)
             logger.info(Fore.MAGENTA + "🦢 Гусь %s раздаёт челяди деньги! Все игроки получают по %d", goose.name, money)
 
-    def add_random_entity(self):
+    def add_random_entity(self) -> None:
         """
         Добавляет случайного игрока или гуся в казино.
 
@@ -184,12 +222,16 @@ class Casino:
         Если добавляется гусь, его тип выбирается с учётом текущего баланса типов гусей.
         """
         prob_player = (len(self.geese) + 1) / (len(self.players) + len(self.geese) + 2)
-        if (random.random() < prob_player and len(self.player_names) > 0) or len(self.goose_names) == 0:
+        if (random.random() < prob_player and len(self.players) < ENTITIES_MAX_COUNT / 2 + 1) or len(self.geese) >= ENTITIES_MAX_COUNT / 2 + 1:
             balances = [50, 100, 150, 200, 300, 500]
             weights = [0.3, 0.25, 0.15, 0.15, 0.1, 0.05]
             balance = random.choices(balances, weights=weights)[0]
             name = random.choice(self.player_names)
-            new_player = Player(
+
+            player_classes = [Player, PsychoPlayer]
+            player_class = random.choices(player_classes, weights=[0.55, 0.45])[0]
+
+            new_player = player_class(
                 name=name,
                 balance=balance
             )
@@ -198,13 +240,13 @@ class Casino:
             logger.info(Fore.CYAN + "➕ В казик пришёл новый игрок: %s с валютой в количестве %d", new_player.name, new_player.balance)
         else:
             name = random.choice(self.goose_names)
-            goose_classes = [HonkGoose, RichGoose]
 
+            goose_classes = [HonkGoose, RichGoose]
             count_honk = sum(1 for g in self.geese if isinstance(g, HonkGoose))
             count_rich = sum(1 for g in self.geese if isinstance(g, RichGoose))
-
             weights = [1 / (count_honk + 1), 1 / (count_rich + 1)]
             goose_class = random.choices(goose_classes, weights=weights)[0]
+
             new_goose = goose_class(
                 name=name,
                 honk_volume=random.randint(1, 10)
@@ -213,7 +255,29 @@ class Casino:
             self.add_goose(new_goose)
             logger.info(Fore.CYAN + "➕ В казик залетел новый гусь по имени %s", new_goose.name)
 
-    def set_events_weight(self, weights: dict[str, float]):
+    def kill_player(self, killer: PsychoPlayer) -> None:
+        """
+        Убивает игрока, выбранного случайно среди всех игроков, кроме killer.
+
+        Если в казино только один игрок, то убивает его (самоубийство killer).
+        Убитый игрок удаляется из коллекции игроков.
+
+        :param killer: Игрок, который совершает убийство.
+        """
+        if len(self.players) == 1 or random.random() < 0.4:
+            self.remove_player(killer)
+            logger.info(Fore.RED + "❌ Игрок %s больше так не может. Игрок %s покидает этот мир!",
+                        killer.name, killer.name)
+        else:
+            player = random.choice([p for p in self.players if p != killer])
+            money = player.balance
+            killer.balance += money
+            killer.update_psycho(money)
+            self.remove_player(player)
+            logger.info(Fore.RED + "❌ Игрок %s психанул и убил игрока %s. Игрок %s покидает казино! Новый баланс убийцы: %d",
+                        killer.name, player.name, player.name, killer.balance)
+
+    def set_events_weight(self, weights: dict[str, float]) -> None:
         """
         Устанавливает веса для событий симуляции.
 
@@ -242,13 +306,22 @@ class CasinoBets(UserDict):
     Логирует изменения ставок при установке значений.
     """
 
-    def place_bet(self, player_name: str, bet_type: str, amount: int):
+    def place_bet(self, player_name: str, bet_type: str, amount: int) -> None:
         """Устанавливает ставку игрока: тип ('чётное' или 'нечётное') и размер."""
         if player_name in self:
             return
         self[player_name] = {'type': bet_type, 'amount': amount}
 
-    def clear_bets(self):
+    def remove_bet(self, player_name: str) -> None:
+        """
+        Удаляет ставку игрока по имени, если она существует.
+
+        :param player_name: Имя игрока, чью ставку нужно удалить.
+        """
+        if player_name in self:
+            del self[player_name]
+
+    def clear_bets(self) -> None:
         """Очищает все ставки."""
         self.data.clear()
-        logger.debug("All bets have been cleared.")
+        # logger.debug("All bets have been cleared.")

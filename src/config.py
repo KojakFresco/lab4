@@ -26,7 +26,7 @@ LOGGING_CONFIG = {
             "datefmt": "%Y-%m-%d %H:%M:%S",
         },
         "console_format": {
-            "format": "%(message)s",
+            "format": "%(message)s\x1b[0m",
         }
     },
     "handlers": {
@@ -45,6 +45,7 @@ LOGGING_CONFIG = {
             "backupCount": 5,
             "level": "DEBUG",
             "filters": ["not_info"],
+            "encoding": "utf-8",
         },
     },
     "loggers": {

@@ -29,7 +29,10 @@ class HonkGoose(Goose):
         """
         Вызывает гуся, который издаёт звук "Га!" с громкостью, равной его параметру honk_volume.
         """
-        logging.getLogger(__name__).info(Fore.LIGHTYELLOW_EX + "Га! " * int(self.honk_volume))
+        logging.getLogger(__name__).info(
+            Fore.MAGENTA + "🦢 Гусь %s жёстко орёт! " + Fore.LIGHTYELLOW_EX + "Га! " * int(self.honk_volume),
+            self.name)
+        return self.honk_volume
 
 
 class GooseCollection:
