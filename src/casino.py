@@ -110,7 +110,7 @@ class Casino:
 
         Ставка выбирается случайным образом из доступных игроков, которые ещё не сделали ставку.
         """
-        available_players = [p for p in self.players if p.name not in self.bets]
+        available_players = [p for p in self.players if p.name not in self.bets and p.balance > 0]
         player = random.choice(available_players)
         bet_type = random.choices(['красное', 'чёрное', 'зеро'], weights=[0.47, 0.48, 0.05])[0]
         if player.balance < 1: amount = player.balance
